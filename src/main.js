@@ -2,7 +2,7 @@ function onOpen() {
     let ui = SpreadsheetApp.getUi();
     ui.createMenu('SD-prep')
         .addSubMenu(
-            ui.createMenu('Recode', 'recode_submenu')
+            ui.createMenu('Recode')
                 .addItem('Dichotomous', 'recode_dich')
                 .addItem('Categorical', 'recode_cat')
         )
