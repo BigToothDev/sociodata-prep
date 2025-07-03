@@ -1,0 +1,23 @@
+{
+  "name": "sociodata-prep",
+  "version": "1.0.0",
+  "description": "A Google Apps Script-based tool for transforming and preparing survey data from Google Forms in Google Sheets.",
+  "main": "src/main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BigToothDev/sociodata-prep.git"
+  },
+  "author": "Alex Lytvynenko",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/BigToothDev/sociodata-prep/issues"
+  },
+  "homepage": "https://github.com/BigToothDev/sociodata-prep#readme",
+  "dependencies": {
+    "@google/clasp": "^3.0.6-alpha",
+    "@types/google-apps-script": "^1.0.99"
+  }
+}

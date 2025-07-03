@@ -1,0 +1,19 @@
+# Google Apps Script
+.clasp.json
+.clasp.cache
+
+# Node.js
+node_modules/
+yarn.lock
+
+# VS Code
+.vscode/
+.idea/
+
+# OS-specific
+.DS_Store
+Thumbs.db
+*ini
+
+# Environment files
+.env
