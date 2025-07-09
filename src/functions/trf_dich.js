@@ -1,3 +1,20 @@
+function check_n_past_data_dich(trf_dialogue_input_list, ui, sheet, last_column, header, last_row, values) {
+    if (!trf_dialogue_input_list.length) return ui.alert('No values found to transform');
+    sheet.insertColumnsAfter(last_column, trf_dialogue_input_list.length);
+    for (let i = 0; i < trf_dialogue_input_list.length; i++) {
+        sheet.getRange(1, last_column + 1 + i).setValue(`${header} [${trf_dialogue_input_list[i]}]`);
+    };
+    for (let col = last_column + 1; col <= last_column + trf_dialogue_input_list.length; col++) {
+        let i = col - (last_column + 1);
+        let columnData = [];
+        for (let row = 2; row <= last_row; row++) {
+            let cell = values[row - 2][0];
+            columnData.push([cell.includes(trf_dialogue_input_list[i]) ? 'True' : 'False']);
+        };
+        sheet.getRange(2, col, columnData.length, 1).setValues(columnData);
+    };
+};
+
 function trf_dich() {
     const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     const ui = SpreadsheetApp.getUi();
@@ -5,6 +22,10 @@ function trf_dich() {
     if (!sheet) return ui.alert('No active sheet found');
     const to_trf_column = sheet.getActiveRange().getColumn();
     if (!to_trf_column) return ui.alert('No active column selected');
+    let baseHeader = sheet.getRange(1, to_trf_column).getValue();
+    let lastRow = sheet.getLastRow();
+    let lastCol = sheet.getLastColumn();
+    let vals = sheet.getRange(2, to_trf_column, lastRow - 1, 1).getValues();
     let set_option_dialogue = ui.prompt(
         "Transform Multichoice Column",
         "Paste a custom list of values to split by, or leave empty to auto-split by comma",
@@ -14,31 +35,14 @@ function trf_dich() {
     let input_list = set_option_dialogue.getResponseText();
     if (button == ui.Button.OK) {
         if (input_list == '') {
-            let lastRow = sheet.getLastRow();
-            let lastCol = sheet.getLastColumn();
-
-            let vals = sheet.getRange(2, to_trf_column, lastRow - 1, 1).getValues();
             let sep_vals = vals.map(row => row[0]).flatMap(cell => cell.split(',')).map(str => str.trim()).filter(str => str !== '');
             let unique = [...new Set(sep_vals)];
-            if (!unique.length) return ui.alert('No values found to transform');
-            sheet.insertColumnsAfter(lastCol, unique.length);
-
-            let baseHeader = sheet.getRange(1, to_trf_column).getValue();
-            for (let i = 0; i < unique.length; i++) {
-                sheet.getRange(1, lastCol + 1 + i).setValue(`${baseHeader} [${unique[i]}]`);
-            };
-            for (let col = lastCol + 1; col <= lastCol + unique.length; col++) {
-                let i = col - (lastCol + 1);
-                let columnData = [];
-                for (let row = 2; row <= lastRow; row++) {
-                    let cell = vals[row-2][0];
-                    let processed_cell_list = cell.split(',').map(str => str.trim()).filter(str => str !== '');
-                    columnData.push([processed_cell_list.includes(unique[i]) ? 'True' : 'False']);
-                };
-                sheet.getRange(2, col, columnData.length, 1).setValues(columnData);
-            };
+            check_n_past_data_dich(unique, ui, sheet, lastCol, baseHeader, lastRow, vals);
         } else {
-            return ui.alert('Custom split is not yet supported')
+            let isValidSyntax = /^(\s*"[^"]*"\s*,)*\s*"[^"]*"\s*$/.test(input_list);
+            if (!isValidSyntax) return ui.alert('Invalid syntax');
+            let custom_user_list = input_list.match(/"[^"]*"/g).map(s => s.replace(/"/g, '').trim());
+            check_n_past_data_dich(custom_user_list, ui, sheet, lastCol, baseHeader, lastRow, vals);
         };
     } else {
         return ui.alert('User aborted request');
