@@ -1,3 +1,8 @@
 **/**
 !src/main.js
+!src/functions/r_id.js
+!src/functions/sample_rand.js
+!src/functions/dynam.js
+!src/functions/trf_dich.js
+!src/functions/trf_cat.js
 !appsscript.json
