@@ -10,8 +10,14 @@ function onOpen() {
                 .addItem('Dichotomous', 'trf_dich')
                 .addItem('Categorical', 'trf_cat')
         )
-        .addSeparator()
-        .addItem('Recode Numerically', 'num_recode')
-        .addItem('Pivot', 'pivot')
+        .addSubMenu(
+            ui.createMenu('Pivot')
+                .addItem('Wide to Long', 'w2l_pivot')
+        )
+        .addSubMenu(
+            ui.createMenu('Recode Numerically')
+                .addItem('Wide', 'num_recode_wide')
+                .addItem('Long', 'num_recode_long')
+        )
         .addToUi();
 };
