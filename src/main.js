@@ -14,6 +14,7 @@ function onOpen() {
             ui.createMenu('Pivot')
                 .addItem('Wide to Long', 'w2l_pivot')
         )
+        .addItem('Dimensions', 'dimensions')
         .addSubMenu(
             ui.createMenu('Recode Numerically')
                 .addItem('Wide', 'num_recode_wide')
