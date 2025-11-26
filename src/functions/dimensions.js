@@ -21,8 +21,8 @@ function dimensions() {
             Q_short.push('');
         } else {
             let sq_br_matches = value.match(/\[[^\]]*\]/g) || [];
-            first_dimension.push(sq_br_matches[0] || '');
-            second_dimension.push(sq_br_matches[1] || '');
+            first_dimension.push(sq_br_matches[0] ? sq_br_matches[0].slice(1, -1) : '');
+            second_dimension.push(sq_br_matches[1] ? sq_br_matches[1].slice(1, -1) : '');
             Q_short.push(String(value).replace(/\[[^\]]*\]/g, '').replace(/\s+/g, ' ').trim());
         };
     };
