@@ -24,8 +24,8 @@ function createDynamicsGraph(_dynamicsSheet: GoogleAppsScript.Spreadsheet.Sheet)
         .setOption('height', 600)
         .setOption('title', 'Dynamics')
         .setOption('series', { 0: { color: '#1323e9' } })
-        .setOption('hAxis', { title: 'Count' })
-        .setOption('vAxis', { title: 'Date' })
+        .setOption('hAxis', { title: 'Date' })
+        .setOption('vAxis', { title: 'Count' })
         .build();
     _dynamicsSheet.insertChart(chart);
 }
