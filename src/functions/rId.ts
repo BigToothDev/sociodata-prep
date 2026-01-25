@@ -1,5 +1,5 @@
 const TRANSFORM_SHEET_PREFIX: string = 'sd-prep_';
-const ID_HEADER: string = 'ID';
+const ID_HEADER: string = 'R_ID';
 
 function respId(startRow: number = 2): void | GoogleAppsScript.Base.Button {
     const context = getSheetContext();
@@ -15,6 +15,7 @@ function respId(startRow: number = 2): void | GoogleAppsScript.Base.Button {
         const lastRow: number = newSheet.getLastRow();
         const idsArray: number[][] = Array.from({ length: lastRow - startRow + 1 }, (_, i) => [i + 1]);
         newSheet.getRange(startRow, 1, idsArray.length, 1).setValues(idsArray).setNumberFormat('0');
+        newSheet.autoResizeColumns(1, 1);
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         ui.alert('Error occurred: ' + message);
