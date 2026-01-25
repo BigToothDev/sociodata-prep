@@ -3,7 +3,7 @@ function onOpen(): void {
     ui.createMenu('SD-prep')
         .addItem('Calculate Sample', 'sampleRandom')
         .addItem('Add Response IDs', 'respId')
-        .addItem('Track Dynamics', 'dynam')
+        .addItem('Track Dynamics', 'dynamics')
         .addSeparator()
         .addSubMenu(
             ui.createMenu('Transform multichoice')
@@ -12,7 +12,7 @@ function onOpen(): void {
         )
         .addSubMenu(
             ui.createMenu('Pivot')
-                .addItem('Wide to Long', 'w2lPivot')
+                .addItem('Wide to Long', 'pivotWideToLong')
         )
         .addItem('Dimensions', 'dimensions')
         .addSubMenu(
