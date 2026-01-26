@@ -1,67 +1,71 @@
-function pasteDataDich(_activeSheet: GoogleAppsScript.Spreadsheet.Sheet, _ui: GoogleAppsScript.Base.Ui, _inputList: string[], _baseHeader: string, _lastRow: number, _values: any[][], _other = false): void | GoogleAppsScript.Base.Button {
-    if (!_inputList.length) return _ui.alert('No values passed to transform');
-    const lastColumn = _activeSheet.getLastColumn();
-    const totalNewCols = _inputList.length + (_other ? 1 : 0);
-    _activeSheet.insertColumnsAfter(lastColumn, totalNewCols);
-    for (let i = 0; i < _inputList.length; i++) {
-        _activeSheet.getRange(1, lastColumn + 1 + i).setValue(`${_baseHeader} [${_inputList[i]}]`);
-    }
-    for (let col = lastColumn + 1; col <= lastColumn + _inputList.length; col++) {
-        const i = col - (lastColumn + 1);
-        const columnData: string[][] = [];
-        for (let row = 2; row <= _lastRow; row++) {
-            const rawCell = _values[row - 2][0];
-            const cell = typeof rawCell === "string" ? rawCell : String(rawCell ?? "");
-            columnData.push([cell.includes(_inputList[i]) ? 'True' : 'False']);
-        }
-        _activeSheet.getRange(2, col, columnData.length, 1).setValues(columnData);
-    }
-    if (_other === true) {
-        const otherColIndex = lastColumn + 1 + _inputList.length;
-        _activeSheet.getRange(1, otherColIndex).setValue(`${_baseHeader} [Other]`);
-        const otherColumnData: string[][] = [];
-        for (let row = 2; row <= _lastRow; row++) {
-            const rawCell = _values[row - 2][0];
-            let cell = typeof rawCell === "string" ? rawCell : String(rawCell ?? "");
-            for (let i = 0; i < _inputList.length; i++) {
-                cell = cell.replace(_inputList[i], '');
-            }
-            cell = cell.replace(/[, ]+/g, '');
-            otherColumnData.push([cell === '' ? 'False' : 'True']);
-        }
-        _activeSheet.getRange(2, otherColIndex, otherColumnData.length, 1).setValues(otherColumnData);
-    }
-}
-
 function trfDich(): void | GoogleAppsScript.Base.Button {
     const context = getSheetContext();
     if (!context) return;
-    const { ui, activeSheet} = context;
-    const userActiveRange: GoogleAppsScript.Spreadsheet.Range | null = activeSheet.getActiveRange();
-    if (!userActiveRange) return ui.alert('No active range selected');
-    const toTrfColumn: number = activeSheet.getActiveRange()!.getColumn();
-    const baseHeader: string = activeSheet.getRange(1, toTrfColumn).getValue();
-    const lastRow: number = activeSheet.getLastRow();
-    const vals: any[][] = activeSheet.getRange(2, toTrfColumn, lastRow - 1, 1).getValues();
-    const set_option_dialogue: GoogleAppsScript.Base.PromptResponse = ui.prompt(
-        "Transform Multichoice Column",
-        "Paste a custom list of values to split by, or leave empty to auto-split by comma",
-        ui.ButtonSet.OK_CANCEL,
-    );
-    const button: GoogleAppsScript.Base.Button = set_option_dialogue.getSelectedButton();
-    const inputList: string | null = set_option_dialogue.getResponseText();
-    if (button == ui.Button.OK) {
-        if (inputList === '' || inputList === null) {
-            const sep_vals = vals.map(row => row[0]).flatMap(cell => cell.split(',')).map(str => str.trim()).filter(str => str !== '');
-            const unique = [...new Set(sep_vals)];
-            pasteDataDich(activeSheet, ui, unique, baseHeader, lastRow, vals, false);
-        } else {
-            let isValidSyntax = /^(\s*"[^"]*"\s*,)*\s*"[^"]*"\s*$/.test(inputList);
-            if (!isValidSyntax) return ui.alert('Invalid syntax');
-            const customUserList: string[] = inputList.match(/"[^"]*"/g)!.map(s => s.replace(/"/g, '').trim());
-            pasteDataDich(activeSheet, ui, customUserList, baseHeader, lastRow, vals, true);
+    const { spreadsheet, ui, activeSheet } = context;
+    try {
+        const scaleSheet = spreadsheet.getSheetByName('scales');
+        if (!scaleSheet) return ui.alert('Scale sheet is missing');
+        const activeSheetHeaders = activeSheet.getRange(1, 1, 1, activeSheet.getLastColumn()).getValues() as string[][];
+        const scalesHeadersAndValues: (string | boolean)[][] = scaleSheet.getRange(1, 1, scaleSheet.getLastRow(), scaleSheet.getLastColumn() - 1).getValues();
+        const onlyMultichoiceQs: string[] = scalesHeadersAndValues.filter(row => row[1] === 'TRUE' || row[1] === true).map(row => String(row[0]));
+        const questionScaleMap: { q: string; value: string }[] = onlyMultichoiceQs.map(qStr => {
+            const match: RegExpMatchArray | null = qStr.match(/^(.*?)(\[[^\]]*\])\s*$/);
+            if (match) {
+                return { q: match[1].trim(), value: match[2].replace(/[\[\]]/g, '').trim() };
+            } else {
+                return { q: qStr.trim(), value: '' };
+            }
+        });
+        const mergedMap: { q: string; values: string[] }[] = [];
+        const tempMap: Record<string, string[]> = {};
+        questionScaleMap.forEach(item => {
+            if (!item.q) return;
+            if (!tempMap[item.q]) tempMap[item.q] = [];
+            if (item.value && !tempMap[item.q].includes(item.value)) tempMap[item.q].push(item.value);
+        });
+        for (const [q, values] of Object.entries(tempMap)) {
+            mergedMap.push({ q, values });
         }
-    } else {
-        return ui.alert('User aborted request');
+        const colToDelete: number[] = [];
+        activeSheetHeaders[0].forEach((header, colIndex) => {
+            const matchedScale: { q: string; values: string[] } | undefined = mergedMap.find(item => item.q === header);
+            if (matchedScale) {
+                const colNum: number = colIndex + 1;
+                colToDelete.push(colNum);
+                const colData: string[][] = activeSheet.getRange(2, colNum, activeSheet.getLastRow() - 1).getValues() as string[][];
+                matchedScale.values.forEach((scaleValue: string) => {
+                    const newColIndex: number = activeSheet.getLastColumn() + 1;
+                    const newColHeader = `${header} [${scaleValue}]`;
+                    const newColData: string[][] = colData.map(row => {
+                        const cell = String(row[0] || '');
+                        if (scaleValue === "Other") {
+                            const cleanedCell = matchedScale.values.reduce((str: string, val: string) => {
+                                const escapedVal: string = val.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                                return str.replace(new RegExp(escapedVal, 'g'), '');
+                            }, cell).replace(/[.,;:!?]/g, '').trim();
+                            return [cleanedCell ? "TRUE" : "FALSE"];
+                        } else {
+                            return [cell.includes(scaleValue) ? "TRUE" : "FALSE"];
+                        }
+                    });
+                    activeSheet.getRange(1, newColIndex).setValue(newColHeader);
+                    activeSheet.getRange(2, newColIndex, newColData.length, 1).setValues(newColData);
+                });
+            }
+        });
+        const button: GoogleAppsScript.Base.Button = ui.alert(
+            "Do you want to delete parent columns?",
+            ui.ButtonSet.YES_NO,
+        );
+        if (button == ui.Button.YES) {
+            for (let i = 0; i < colToDelete.length; i++) {
+                activeSheet.deleteColumn(colToDelete[i] - i);
+            }
+        } else {
+            return ui.alert('Parent columns retained');
+        }
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        ui.alert('Error occurred: ' + message);
     }
 }
