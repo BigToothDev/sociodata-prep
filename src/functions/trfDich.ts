@@ -1,3 +1,5 @@
+const FLAGS_DELIMITER = ',';
+
 function trfDich(): void | GoogleAppsScript.Base.Button {
     const context = getSheetContext();
     if (!context) return;
@@ -5,30 +7,37 @@ function trfDich(): void | GoogleAppsScript.Base.Button {
     try {
         const scaleSheet = spreadsheet.getSheetByName('scales');
         if (!scaleSheet) return ui.alert('Scale sheet is missing');
+        const scalesData = scaleSheet.getRange(2, 1, scaleSheet.getLastRow() - 1, 2).getValues();
+
+        const questionsSheet = spreadsheet.getSheetByName('questions');
+        if (!questionsSheet) return ui.alert('Questions sheet is missing');
+        const questionsData = questionsSheet.getRange(2, 1, questionsSheet.getLastRow() - 1, 5).getValues();
+
         const activeSheetHeaders = activeSheet.getRange(1, 1, 1, activeSheet.getLastColumn()).getValues() as string[][];
-        const scalesHeadersAndValues: (string | boolean)[][] = scaleSheet.getRange(1, 1, scaleSheet.getLastRow(), scaleSheet.getLastColumn() - 1).getValues();
-        const onlyMultichoiceQs: string[] = scalesHeadersAndValues.filter(row => row[1] === 'TRUE' || row[1] === true).map(row => String(row[0]));
-        const questionScaleMap: { q: string; value: string }[] = onlyMultichoiceQs.map(qStr => {
-            const match: RegExpMatchArray | null = qStr.match(/^(.*?)(\[[^\]]*\])\s*$/);
-            if (match) {
-                return { q: match[1].trim(), value: match[2].replace(/[\[\]]/g, '').trim() };
-            } else {
-                return { q: qStr.trim(), value: '' };
-            }
+        
+        //create a map of options by set name
+        const optionsBySet: Record<string, string[]> = {};
+        scalesData.forEach(row => {
+            const setName = String(row[0]).trim();
+            const optionText = String(row[2]).trim();
+            if (!setName || !optionText) return;
+            if (!optionsBySet[setName]) optionsBySet[setName] = [];
+            optionsBySet[setName].push(optionText);
         });
-        const mergedMap: { q: string; values: string[] }[] = [];
-        const tempMap: Record<string, string[]> = {};
-        questionScaleMap.forEach(item => {
-            if (!item.q) return;
-            if (!tempMap[item.q]) tempMap[item.q] = [];
-            if (item.value && !tempMap[item.q].includes(item.value)) tempMap[item.q].push(item.value);
-        });
-        for (const [q, values] of Object.entries(tempMap)) {
-            mergedMap.push({ q, values });
-        }
+
+        //create a merged map of questions and their corresponding options
+        const mergedMap: { q: string; values: string[] }[] = questionsData
+            .filter(row => String(row[2]).trim() === 'Flags')
+            .map(row => ({
+                q: String(row[1]).trim(),
+                values: optionsBySet[String(row[3]).trim()] || [],
+            }))
+            .filter(item => item.q && item.values.length > 0);
+        
         const colToDelete: number[] = [];
         activeSheetHeaders[0].forEach((header, colIndex) => {
-            const matchedScale: { q: string; values: string[] } | undefined = mergedMap.find(item => item.q === header);
+            const matchedScale: { q: string; values: string[] } | undefined =
+                mergedMap.find(item => item.q === String(header).trim());
             if (matchedScale) {
                 const colNum: number = colIndex + 1;
                 colToDelete.push(colNum);
@@ -38,14 +47,17 @@ function trfDich(): void | GoogleAppsScript.Base.Button {
                     const newColHeader = `${header} [${scaleValue}]`;
                     const newColData: string[][] = colData.map(row => {
                         const cell = String(row[0] || '');
+
+                        const selected: string[] = cell
+                            .split(FLAGS_DELIMITER)
+                            .map(s => s.trim())
+                            .filter(Boolean);
+
                         if (scaleValue === "Other") {
-                            const cleanedCell = matchedScale.values.reduce((str: string, val: string) => {
-                                const escapedVal: string = val.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                                return str.replace(new RegExp(escapedVal, 'g'), '');
-                            }, cell).replace(/[.,;:!?]/g, '').trim();
-                            return [cleanedCell ? "TRUE" : "FALSE"];
+                            const hasOther = selected.some(s => !matchedScale.values.includes(s));
+                            return [hasOther ? "TRUE" : "FALSE"];
                         } else {
-                            return [cell.includes(scaleValue) ? "TRUE" : "FALSE"];
+                            return [selected.includes(scaleValue) ? "TRUE" : "FALSE"];
                         }
                     });
                     activeSheet.getRange(1, newColIndex).setValue(newColHeader);
