@@ -6,29 +6,45 @@ function numRecodeLong(): void | GoogleAppsScript.Base.Button {
         const dataHeaders: string[][] = activeSheet.getRange(1, 1, 1, activeSheet.getLastColumn()).getValues();
         const dataCols: string[] = ['Q', 'Option'];
         const dataIndices: number[] = dataCols.map(item => dataHeaders[0].indexOf(item));
-        const dataQs: string[][] = activeSheet.getRange(2, dataIndices[0] + 1, activeSheet.getLastRow()).getValues();
-        const dataOpts: string[][] = activeSheet.getRange(2, dataIndices[1] + 1, activeSheet.getLastRow()).getValues();
+
+        if (dataIndices.includes(-1)) return ui.alert('Missing Q or Option column in the active sheet');
+
+        const dataQs: string[][] = activeSheet.getRange(2, dataIndices[0] + 1, activeSheet.getLastRow() - 1).getValues();
+        const dataOpts: string[][] = activeSheet.getRange(2, dataIndices[1] + 1, activeSheet.getLastRow() - 1).getValues();
         if (dataQs.length != dataOpts.length) return ui.alert('Diff length on columns');
+
         const scaleSheet = spreadsheet.getSheetByName('scales');
         if (!scaleSheet) return ui.alert('No scales sheet found');
-        const scaleHeaders: string[][] = scaleSheet.getRange(1, 1, 1, scaleSheet.getLastColumn()).getValues();
-        const scaleCols: string[] = ['Question', 'Option', 'Code'];
-        const scaleIndices: number[] = scaleCols.map(item => scaleHeaders[0].indexOf(item));
-        if (scaleIndices.includes(-1)) return ui.alert('Missing some of input columns');
-        const scaleQs = scaleSheet.getRange(2, scaleIndices[0] + 1, activeSheet.getLastRow()).getValues();
-        const scaleOpts = scaleSheet.getRange(2, scaleIndices[1] + 1, activeSheet.getLastRow()).getValues();
-        const scaleCodes = scaleSheet.getRange(2, scaleIndices[2] + 1, activeSheet.getLastRow()).getValues();
-        if (scaleQs.length != scaleOpts.length || scaleQs.length != scaleCodes.length) return ui.alert('Diff lenght on columns');
-        const recodedValues = [];
+        const scalesData = scaleSheet.getRange(2, 1, scaleSheet.getLastRow() - 1, 3).getValues();
+
+        const questionsSheet = spreadsheet.getSheetByName('questions');
+        if (!questionsSheet) return ui.alert('No questions sheet found');
+        const questionsData = questionsSheet.getRange(2, 1, questionsSheet.getLastRow() - 1, 5).getValues();
+
+        const setByQuestion: Record<string, string> = {};
+        questionsData.forEach(row => {
+            const q = String(row[1]).trim();
+            if (q) setByQuestion[q] = String(row[3]).trim();
+        });
+
+        const codeByKey: Record<string, string | number> = {};
+        scalesData.forEach(row => {
+            const setName = String(row[0]).trim();
+            const optionText = String(row[2]).trim();
+            if (!setName || !optionText) return;
+            codeByKey[`${setName}||${optionText}`] = row[1];
+        });
+
+        const recodedValues: (string | number)[][] = [];
         for (let i = 0; i < dataQs.length; i++) {
-            const question = dataQs[i][0];
-            const option = dataOpts[i][0];
-            let codeFound = -99;
-            for (let j = 0; j < scaleQs.length; j++) {
-                if (scaleQs[j][0] == question && scaleOpts[j][0] == option) {
-                    codeFound = scaleCodes[j][0];
-                    break;
-                }
+            const question = String(dataQs[i][0]).trim();
+            const option = String(dataOpts[i][0]).trim();
+
+            let codeFound: string | number = -99;
+            const setName = setByQuestion[question];
+            if (setName) {
+                const key = `${setName}||${option}`;
+                if (key in codeByKey) codeFound = codeByKey[key];
             }
             recodedValues.push([codeFound]);
         }
