@@ -18,7 +18,9 @@
   "homepage": "https://github.com/BigToothDev/sociodata-prep#readme",
   "dependencies": {
     "@google/clasp": "^3.0.6-alpha",
-    "@types/google-apps-script": "^1.0.99",
     "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@types/google-apps-script": "^2.0.12"
   }
 }
