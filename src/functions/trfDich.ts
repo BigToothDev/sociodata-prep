@@ -13,7 +13,18 @@ function trfDich(): void | GoogleAppsScript.Base.Button {
         const questionsSheet = spreadsheet.getSheetByName('questions');
         if (!questionsSheet) return ui.alert('Questions sheet is missing');
         if (questionsSheet.getLastRow() < 2) return ui.alert('Questions sheet is empty');
-        const questionsData = questionsSheet.getRange(2, 1, questionsSheet.getLastRow() - 1, 5).getValues();
+
+        const questionsAll = questionsSheet.getDataRange().getValues();
+        const qHeaders: string[] = questionsAll[0].map(h => String(h).trim());
+        const iQ = qHeaders.indexOf('Q');
+        const iScale = qHeaders.indexOf('Scale');
+        const iCross = qHeaders.indexOf('Cross_Options');
+        const iOpt = qHeaders.indexOf('Options');
+
+        if ([iQ, iScale, iCross, iOpt].includes(-1)) {
+            return ui.alert('questions: missing Q / Scale / Cross_Options / Options column');
+        }
+        const questionsData = questionsAll.slice(1);
 
         if (activeSheet.getLastRow() < 2) return ui.alert('No data rows on the active sheet');
         const selectedCols = getSelectedColumns(activeSheet);
@@ -32,54 +43,75 @@ function trfDich(): void | GoogleAppsScript.Base.Button {
             (optionsBySet[setName] ??= []).push(optionText);
         });
 
-        //create a merged map of questions and their corresponding options
-        const mergedMap: { q: string; values: string[] }[] = questionsData
-            .filter(row => String(row[2]).trim() === 'Flags')
-            .map(row => ({
-                q: String(row[1]).trim(),
-                values: optionsBySet[String(row[3]).trim()] || [],
-            }))
-            .filter(item => item.q && item.values.length > 0);
+        const byQ: Record<string, { type: string; crossValues: string[]; values: string[] }> = {};
+        questionsData.forEach(row => {
+            const q = String(row[iQ] ?? '').trim();
+            const type = String(row[iScale] ?? '').trim();
+            if (!q || (type !== 'Flags' && type !== 'Crossflag')) return;
+            const values = optionsBySet[String(row[iOpt] ?? '').trim()] || [];
+            const crossValues = optionsBySet[String(row[iCross] ?? '').trim()] || [];
+            if (values.length === 0) return;
+            if (type === 'Crossflag' && crossValues.length === 0) return;
+            byQ[q] = { type, crossValues, values };
+        });
 
         const dataRowsCount: number = activeSheet.getLastRow() - 1;
         const firstNewCol: number = activeSheet.getLastColumn() + 1;
         const newColumns: { header: string; data: string[] }[] = [];
+        const badHeaders: string[] = [];
 
         const colToDelete: number[] = [];
         activeSheetHeaders.forEach((header, colIndex) => {
             const colNum: number = colIndex + 1;
             if (!selectedCols.has(colNum)) return;
-            const matchedScale: { q: string; values: string[] } | undefined =
-                mergedMap.find(item => item.q === header);
-            if (matchedScale) {
-                colToDelete.push(colNum);
-                const colData: string[][] = activeSheet.getRange(2, colNum, dataRowsCount).getValues() as string[][];
-                matchedScale.values.forEach((scaleValue: string) => {
-                    const newColHeader = `${header} [${scaleValue}]`;
-                    if (existingHeaders.has(newColHeader)) return;
-                    existingHeaders.add(newColHeader);
-                    const newColData: string[] = colData.map(row => {
-                        const cell = String(row[0] ?? '');
 
-                        const selected: string[] = cell
-                            .split(FLAGS_DELIMITER)
-                            .map(s => s.trim())
-                            .filter(Boolean);
+            let found: { type: string; crossValues: string[]; values: string[] } | undefined =
+                byQ[header]?.type === 'Flags' ? byQ[header] : undefined;
 
-                        if (scaleValue === "Other") {
-                            const hasOther = selected.some(s => !matchedScale.values.includes(s));
-                            return hasOther ? "TRUE" : "FALSE";
-                        } else {
-                            return selected.includes(scaleValue) ? "TRUE" : "FALSE";
-                        }
-                    });
-                    newColumns.push({ header: newColHeader, data: newColData });
-                });
+            if (!found) {
+                const m = header.match(/^(.*?)\s*\[([^\[\]]*)\]\s*$/);
+                if (m) {
+                    const cand = byQ[m[1].trim()];
+                    if (cand && cand.type === 'Crossflag') {
+                        if (cand.crossValues.includes(m[2].trim())) found = cand;
+                        else badHeaders.push(header);
+                    }
+                }
             }
+            if (!found) return;
+            const matchedScale = found;
+
+            colToDelete.push(colNum);
+            const colData: string[][] = activeSheet.getRange(2, colNum, dataRowsCount).getValues() as string[][];
+            matchedScale.values.forEach((scaleValue: string) => {
+                const newColHeader = `${header} [${scaleValue}]`;
+                if (existingHeaders.has(newColHeader)) return;
+                existingHeaders.add(newColHeader);
+                const newColData: string[] = colData.map(row => {
+                    const cell = String(row[0] ?? '');
+
+                    const selected: string[] = cell
+                        .split(FLAGS_DELIMITER)
+                        .map(s => s.trim())
+                        .filter(Boolean);
+
+                    if (scaleValue === "Other") {
+                        const hasOther = selected.some(s => !matchedScale.values.includes(s));
+                        return hasOther ? "TRUE" : "FALSE";
+                    } else {
+                        return selected.includes(scaleValue) ? "TRUE" : "FALSE";
+                    }
+                });
+                newColumns.push({ header: newColHeader, data: newColData });
+            });
         });
 
+        if (badHeaders.length > 0) {
+            ui.alert('Skipped (value in [] not found in Cross_Options):\n' + badHeaders.join('\n'));
+        }
+
         if (colToDelete.length === 0) {
-            return ui.alert('Selected columns do not contain type Flags');
+            return ui.alert('Selected columns do not contain type Flags or Crossflag');
         }
 
         if (newColumns.length > 0) {
