@@ -1,5 +1,3 @@
-const FLAGS_DELIMITER = ',';
-
 function trfDich(): void | GoogleAppsScript.Base.Button {
     const context = getSheetContext();
     if (!context) return;
@@ -90,14 +88,13 @@ function trfDich(): void | GoogleAppsScript.Base.Button {
                 const newColData: string[] = colData.map(row => {
                     const cell = String(row[0] ?? '');
 
-                    const selected: string[] = cell
-                        .split(FLAGS_DELIMITER)
-                        .map(s => s.trim())
-                        .filter(Boolean);
+                    const { selected, unknown } = parseFlagsCell(
+                        String(row[0] ?? ''),
+                        matchedScale.values
+                    );
 
                     if (scaleValue === "Other") {
-                        const hasOther = selected.some(s => !matchedScale.values.includes(s));
-                        return hasOther ? "TRUE" : "FALSE";
+                        return unknown.length > 0 ? "TRUE" : "FALSE";
                     } else {
                         return selected.includes(scaleValue) ? "TRUE" : "FALSE";
                     }

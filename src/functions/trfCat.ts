@@ -82,11 +82,9 @@ function trfCat(): void | GoogleAppsScript.Base.Button {
       const parsed: (string | number)[][] = colData.map(row => {
         const text = String(row[0] ?? '').trim();
         if (!text) return [];
-        const slots: (string | number)[] = [];
-        text.split(FLAGS_DELIMITER).map(s => s.trim()).filter(Boolean).forEach(t => {
-          const v = def.values.includes(t) ? t : marker;
-          if (!slots.includes(v)) slots.push(v);
-        });
+        const { selected, unknown } = parseFlagsCell(String(row[0] ?? ''), def.values);
+        const slots: (string | number)[] = [...selected];
+        if (unknown.length > 0) slots.push(marker);
         return slots;
       });
 
