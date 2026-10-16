@@ -1,6 +1,3 @@
-const TRUE_CODE = 1;
-const FALSE_CODE = 2;
-
 function numRecodeLong(): void | GoogleAppsScript.Base.Button {
     const context = getSheetContext();
     if (!context) return;

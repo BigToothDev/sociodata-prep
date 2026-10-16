@@ -1,5 +1,3 @@
-const PIVOT_SHEET_PREFIX: string = 'pivot_';
-
 function pivotWideToLong() {
     const context = getSheetContext();
     if (!context) return;

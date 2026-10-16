@@ -1,0 +1,15 @@
+const DYNAM_SHEET_PREFIX: string = 'dynamics_';
+const STRING_DATE_REGEX: RegExp = /^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2}):(\d{2})$/;
+const TRUE_CODE = 1;
+const FALSE_CODE = 2;
+const PIVOT_SHEET_PREFIX: string = 'pivot_';
+const TRANSFORM_SHEET_PREFIX: string = 'sd-prep_';
+const ID_HEADER: string = 'R_ID';
+const SAMPLE_SHEET_NAME: string = 'sample_random';
+const CONF_LVL: number = 0.95;
+const MARGIN_ERROR: number = 0.05;
+const STDEV: number = 0.5;
+const POS_CONF_LVLS: number[] = [0.80, 0.90, 0.95, 0.98, 0.99];
+const POS_zScoreS: number[] = [1.282, 1.645, 1.960, 2.326, 2.576];
+const TABLE_STRUCTURE: string[] = ['confidence level', 'margin of error', 'standard deviation', 'z-score', 'population', 'sample', 'target'];
+const DEFAULT_CALC_DATA: [string, number][] = [['confidence level', CONF_LVL], ['margin of error', MARGIN_ERROR], ['standard deviation', STDEV], ['z-score', POS_zScoreS[2]]];

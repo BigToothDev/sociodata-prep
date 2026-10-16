@@ -1,6 +1,3 @@
-const DYNAM_SHEET_PREFIX: string = 'dynamics_';
-const STRING_DATE_REGEX: RegExp = /^(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2}):(\d{2})$/;
-
 function getDateFromTable(_Sheet: GoogleAppsScript.Spreadsheet.Sheet): number | null {
     let firstDateCol: number | null = null;
     const fullSecondRow: any[][] = _Sheet.getRange(2, 1, 1, _Sheet.getLastColumn()).getValues();

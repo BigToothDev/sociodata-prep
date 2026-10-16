@@ -1,6 +1,3 @@
-const TRANSFORM_SHEET_PREFIX: string = 'sd-prep_';
-const ID_HEADER: string = 'R_ID';
-
 function respId(startRow: number = 2): void | GoogleAppsScript.Base.Button {
     const context = getSheetContext();
     if (!context) return;
