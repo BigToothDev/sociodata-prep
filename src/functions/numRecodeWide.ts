@@ -61,9 +61,21 @@ function numRecodeWide(): void | GoogleAppsScript.Base.Button {
     const codesByCol: Record<number, Record<string, number>> = {};
     const badHeaders: string[] = [];
     const binaryCols = new Set<number>();
+    const slotCols = new Set<number>();
 
     inputHeaders.forEach((h, idx) => {
       const header = String(h).trim();
+      
+      const slot = parseSlotHeader(header, byQ, (s, v) => !!codesBySet[s] && v in codesBySet[s]);
+      if (slot.status !== 'none') {
+        if (slot.status === 'ok' && codesBySet[slot.optSet]) {
+          codesByCol[idx] = codesBySet[slot.optSet];
+          slotCols.add(idx);
+        } else {
+          badHeaders.push(header);
+        }
+        return;
+      }
 
       const direct = byQ[header];
       if (direct) {
@@ -112,6 +124,7 @@ function numRecodeWide(): void | GoogleAppsScript.Base.Button {
     for (let r = 0; r < inputData.length; r++) {
       for (const c of recode_col_indices) {
         const cell_value = String(inputData[r][c]).trim();
+        if (cell_value === '' && slotCols.has(c)) { inputData[r][c] = ''; continue; }
         const code = codesByCol[c][cell_value];
         inputData[r][c] = code !== undefined ? code : -99;
       }

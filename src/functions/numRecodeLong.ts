@@ -40,7 +40,7 @@ function numRecodeLong(): void | GoogleAppsScript.Base.Button {
         }
         const questionsData = questionsAll.slice(1);
 
-        const byQ: Record<string, { type: string; crossSet: string; optSet: string }> = {};
+        const byQ: Record<string, QDef> = {};
         questionsData.forEach(row => {
             const q = String(row[iQ]).trim();
             if (!q) return;
@@ -74,16 +74,30 @@ function numRecodeLong(): void | GoogleAppsScript.Base.Button {
             }
 
             let setName: string | undefined;
-            const direct = byQ[question];
-            if (direct) {
-                if (direct.type === 'Variants') setName = direct.optSet;
+
+            const slot = parseSlotHeader(question, byQ, (s, v) => !!valuesBySet[s]?.has(v));
+            const isSlot = slot.status !== 'none';
+
+            if (isSlot) {
+                if (slot.status === 'ok') setName = slot.optSet;
+                else badQs.add(question);
             } else {
-                const m = question.match(/^(.*?)\s*\[([^\[\]]*)\]\s*$/);
-                const def = m ? byQ[m[1].trim()] : undefined;
-                if (m && def && def.type === 'Crosstab') {
-                    if (valuesBySet[def.crossSet]?.has(m[2].trim())) setName = def.optSet;
-                    else badQs.add(question);
+                const direct = byQ[question];
+                if (direct) {
+                    if (direct.type === 'Variants') setName = direct.optSet;
+                } else {
+                    const m = question.match(/^(.*?)\s*\[([^\[\]]*)\]\s*$/);
+                    const def = m ? byQ[m[1].trim()] : undefined;
+                    if (m && def && def.type === 'Crosstab') {
+                        if (valuesBySet[def.crossSet]?.has(m[2].trim())) setName = def.optSet;
+                        else badQs.add(question);
+                    }
                 }
+            }
+
+            if (isSlot && option === '') {
+                recodedValues.push(['']);
+                continue;
             }
 
             let codeFound: string | number = -99;
@@ -97,7 +111,7 @@ function numRecodeLong(): void | GoogleAppsScript.Base.Button {
         activeSheet.getRange(1, activeSheet.getLastColumn()).setValue('Code');
 
         if (badQs.size > 0) {
-            ui.alert('Not recoded (value in [] not found in Cross_Options):\n' + Array.from(badQs).join('\n'));
+            ui.alert('Not recoded (value in [] not found in Cross_Options, or unknown R_Option question):\n' + Array.from(badQs).join('\n'));
         }
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
