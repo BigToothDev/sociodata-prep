@@ -14,3 +14,5 @@ const POS_zScoreS: number[] = [1.282, 1.645, 1.960, 2.326, 2.576];
 const TABLE_STRUCTURE: string[] = ['confidence level', 'margin of error', 'standard deviation', 'z-score', 'population', 'sample', 'target'];
 const DEFAULT_CALC_DATA: [string, number][] = [['confidence level', CONF_LVL], ['margin of error', MARGIN_ERROR], ['standard deviation', STDEV], ['z-score', POS_zScoreS[2]]];
 const FLAGS_DELIMITER = ',';
+const QUESTIONS_SHEET_NAME = 'questionnaire';
+const SCALES_SHEET_NAME = 'scales';
