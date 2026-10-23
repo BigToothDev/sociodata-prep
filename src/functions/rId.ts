@@ -12,7 +12,14 @@ function respId(startRow: number = 2): void | GoogleAppsScript.Base.Button {
         const lastRow: number = newSheet.getLastRow();
         const idsArray: number[][] = Array.from({ length: lastRow - startRow + 1 }, (_, i) => [i + 1]);
         newSheet.getRange(startRow, 1, idsArray.length, 1).setValues(idsArray).setNumberFormat('0');
-        newSheet.autoResizeColumns(1, 1);
+
+        const largestIdLength = String(Math.max(idsArray.length, 1)).length;
+        const minimumWidth = Math.max(ID_HEADER.length, largestIdLength) * 8 + 16 + 40;
+        newSheet.setColumnWidth(1, minimumWidth);
+
+        spreadsheet.setActiveSheet(newSheet);
+        SpreadsheetApp.flush();
+        ui.alert(`Transformed sheet "${targetSheetName}" created with ${idsArray.length} IDs`);
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         ui.alert('Error occurred: ' + message);
