@@ -1,6 +1,9 @@
 function onOpen(): void {
     let ui: GoogleAppsScript.Base.Ui = SpreadsheetApp.getUi();
     ui.createMenu('SD-prep')
+        .addItem('Create All Templates', 'createTemplates')
+        //.addItem('Create Google Form', 'createForm')
+        .addSeparator()
         .addItem('Calculate Sample', 'sampleRandom')
         .addItem('Add Response IDs', 'respId')
         .addItem('Track Dynamics', 'dynamics')
