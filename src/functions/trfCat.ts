@@ -3,24 +3,9 @@ function trfCat(): void | GoogleAppsScript.Base.Button {
   if (!context) return;
   const { spreadsheet, ui, activeSheet } = context;
   try {
-    const scaleSheet = spreadsheet.getSheetByName('scales');
-    if (!scaleSheet) return ui.alert('Scale sheet is missing');
-    if (scaleSheet.getLastRow() < 2) return ui.alert('Scale sheet is empty');
-    const scalesData = scaleSheet.getRange(2, 1, scaleSheet.getLastRow() - 1, 3).getValues();
-
-    const questionsSheet = spreadsheet.getSheetByName('questions');
-    if (!questionsSheet) return ui.alert('Questions sheet is missing');
-    if (questionsSheet.getLastRow() < 2) return ui.alert('Questions sheet is empty');
-    const questionsAll = questionsSheet.getDataRange().getValues();
-    const qHeaders: string[] = questionsAll[0].map(h => String(h).trim());
-    const iQ = qHeaders.indexOf('Q');
-    const iScale = qHeaders.indexOf('Scale');
-    const iCross = qHeaders.indexOf('Cross_Options');
-    const iOpt = qHeaders.indexOf('Options');
-    if ([iQ, iScale, iCross, iOpt].includes(-1)) {
-      return ui.alert('questions: missing Q / Scale / Cross_Options / Options column');
-    }
-    const questionsData = questionsAll.slice(1);
+    const catalogResult = loadMultiChoiceCatalog(spreadsheet);
+    if (!catalogResult.catalog) return ui.alert(catalogResult.error ?? 'Unable to load questionnaire metadata');
+    const catalog = catalogResult.catalog;
 
     if (activeSheet.getLastRow() < 2) return ui.alert('No data rows on the active sheet');
     const selectedCols = getSelectedColumns(activeSheet);
@@ -29,26 +14,6 @@ function trfCat(): void | GoogleAppsScript.Base.Button {
       .getValues()[0]
       .map(h => String(h).trim());
     const existingHeaders = new Set<string>(activeSheetHeaders);
-
-    const optionsBySet: Record<string, string[]> = {};
-    scalesData.forEach(row => {
-      const setName = String(row[0] ?? '').trim();
-      const optionText = String(row[2] ?? '').trim();
-      if (!setName || !optionText) return;
-      (optionsBySet[setName] ??= []).push(optionText);
-    });
-
-    const byQ: Record<string, { type: string; crossValues: string[]; values: string[] }> = {};
-    questionsData.forEach(row => {
-      const q = String(row[iQ] ?? '').trim();
-      const type = String(row[iScale] ?? '').trim();
-      if (!q || (type !== 'Flags' && type !== 'Crossflag')) return;
-      const values = optionsBySet[String(row[iOpt] ?? '').trim()] || [];
-      const crossValues = optionsBySet[String(row[iCross] ?? '').trim()] || [];
-      if (values.length === 0) return;
-      if (type === 'Crossflag' && crossValues.length === 0) return;
-      byQ[q] = { type, crossValues, values };
-    });
 
     const dataRowsCount: number = activeSheet.getLastRow() - 1;
     const firstNewCol: number = activeSheet.getLastColumn() + 1;
@@ -61,20 +26,13 @@ function trfCat(): void | GoogleAppsScript.Base.Button {
       const colNum: number = colIndex + 1;
       if (!selectedCols.has(colNum)) return;
 
-      let found: { type: string; crossValues: string[]; values: string[] } | undefined =
-        byQ[header]?.type === 'Flags' ? byQ[header] : undefined;
-      if (!found) {
-        const m = header.match(/^(.*?)\s*\[([^\[\]]*)\]\s*$/);
-        if (m) {
-          const cand = byQ[m[1].trim()];
-          if (cand && cand.type === 'Crossflag') {
-            if (cand.crossValues.includes(m[2].trim())) found = cand;
-            else badHeaders.push(header);
-          }
-        }
+      const resolved = resolveMultiChoiceHeader(header, catalog);
+      if (resolved === 'invalid-cross-value') {
+        badHeaders.push(header);
+        return;
       }
-      if (!found) return;
-      const def = found;
+      if (!resolved) return;
+      const def = resolved.definition;
 
       const colData = activeSheet.getRange(2, colNum, dataRowsCount).getValues();
       const marker: string | number = def.values.includes('Other') ? 'Other' : -99;
@@ -133,13 +91,13 @@ function trfCat(): void | GoogleAppsScript.Base.Button {
       const cutRows = p.parsed.filter(s => s.length > slotsCount).length;
       if (cutRows > 0) truncatedInfo.push(`${p.header}: ${cutRows}`);
 
-      colToDelete.push(p.colNum);
       for (let i = 0; i < slotsCount; i++) {
         const newColHeader = `R_Option ${i + 1}: ${p.header}`;
         if (existingHeaders.has(newColHeader)) continue;
         existingHeaders.add(newColHeader);
         newColumns.push({ header: newColHeader, data: p.parsed.map(s => (i < s.length ? s[i] : '')) });
       }
+      if (slotsCount > 0) colToDelete.push(p.colNum);
     });
 
     if (newColumns.length > 0) {
