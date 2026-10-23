@@ -21,10 +21,10 @@ function numRecodeLong(): void | GoogleAppsScript.Base.Button {
         if (scaleSheet.getLastRow() < 2) return ui.alert('Scale sheet is empty');
         const scalesData = scaleSheet.getRange(2, 1, scaleSheet.getLastRow() - 1, 3).getValues();
 
-        const questionsSheet = spreadsheet.getSheetByName('questions');
-        if (!questionsSheet) return ui.alert('No questions sheet found');
+        const questionsSheet = spreadsheet.getSheetByName(QUESTIONS_SHEET_NAME);
+        if (!questionsSheet) return ui.alert('No questionnaire sheet found');
 
-        if (questionsSheet.getLastRow() < 2) return ui.alert('Questions sheet is empty');
+        if (questionsSheet.getLastRow() < 2) return ui.alert('Questionnaire sheet is empty');
 
         const questionsAll = questionsSheet.getDataRange().getValues();
         const qHeaders: string[] = questionsAll[0].map(h => String(h).trim());
@@ -33,7 +33,7 @@ function numRecodeLong(): void | GoogleAppsScript.Base.Button {
         const iCross = qHeaders.indexOf('Cross_Options');
         const iOpt = qHeaders.indexOf('Options');
         if ([iQ, iScale, iCross, iOpt].includes(-1)) {
-            return ui.alert('questions: missing Q / Scale / Cross_Options / Options column');
+            return ui.alert('Questionnaire: missing Q / Scale / Cross_Options / Options column');
         }
         const questionsData = questionsAll.slice(1);
 

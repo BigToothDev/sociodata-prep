@@ -19,8 +19,8 @@ function numRecodeWide(): void | GoogleAppsScript.Base.Button {
     const scaleSheet: GoogleAppsScript.Spreadsheet.Sheet | null = spreadsheet.getSheetByName('scales');
     if (!scaleSheet) return ui.alert('No scales sheet found');
 
-    const questionsSheet = spreadsheet.getSheetByName('questions');
-    if (!questionsSheet) return ui.alert('No questions sheet found');
+    const questionsSheet = spreadsheet.getSheetByName(QUESTIONS_SHEET_NAME);
+    if (!questionsSheet) return ui.alert('No questionnaire sheet found');
 
     const questionsAll = questionsSheet.getDataRange().getValues();
     const qHeaders: string[] = questionsAll[0].map(h => String(h).trim());
@@ -30,7 +30,7 @@ function numRecodeWide(): void | GoogleAppsScript.Base.Button {
     const iOpt = qHeaders.indexOf('Options');
 
     if ([iQ, iScale, iCross, iOpt].includes(-1)) {
-      return ui.alert('questions: missing one of Q / Scale / Cross_Options / Options columns');
+      return ui.alert('Questionnaire: missing one of Q / Scale / Cross_Options / Options columns');
     }
     const questionsData = questionsAll.slice(1);
 
