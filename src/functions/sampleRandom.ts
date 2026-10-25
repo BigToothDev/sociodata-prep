@@ -20,8 +20,7 @@ function sampleRandom(): void | GoogleAppsScript.Base.Button {
         const sample: number = (Math.pow(POS_zScoreS[2], 2) * population * Math.pow(STDEV, 2)) / ((Math.pow(MARGIN_ERROR, 2) * population) + (Math.pow(POS_zScoreS[2], 2) * Math.pow(STDEV, 2)));
         const newCalcData: [string, number][] = [['population', population], ['sample', sample], ['target', sample / population]];
         sampleSheet.getRange(5, 1, newCalcData.length, newCalcData[0].length).setValues(newCalcData);
-        sampleSheet.deleteRows(8, sampleSheet.getMaxRows() - 7);
-        sampleSheet.deleteColumns(3, sampleSheet.getMaxColumns() - 2);
+        trimSampleSheet(sampleSheet);
       } else {
         ui.alert('User aborted request');
       }
@@ -55,12 +54,19 @@ function sampleRandom(): void | GoogleAppsScript.Base.Button {
       toCreateSheet.getRange(matchRowVals[3][1], 2).setValue(zScore);
       toCreateSheet.getRange(matchRowVals[5][1], 2).setValue(userSample);
       toCreateSheet.getRange(matchRowVals[6][1], 2).setValue(userSample / userPopulation);
-      toCreateSheet.deleteRows(8, toCreateSheet.getMaxRows() - 7);
-      toCreateSheet.deleteColumns(3, toCreateSheet.getMaxColumns() - 2);
+      trimSampleSheet(toCreateSheet);
       toCreateSheet.autoResizeColumns(1, 2);
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     ui.alert('Error occurred: ' + message);
   }
+}
+
+function trimSampleSheet(sheet: GoogleAppsScript.Spreadsheet.Sheet): void {
+  const extraRows = sheet.getMaxRows() - 7;
+  if (extraRows > 0) sheet.deleteRows(8, extraRows);
+
+  const extraColumns = sheet.getMaxColumns() - 2;
+  if (extraColumns > 0) sheet.deleteColumns(3, extraColumns);
 }
